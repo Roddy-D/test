@@ -70,24 +70,24 @@ function gradeIpapi(j) {
   return { sev, text: `ipapi：${label} (${pct}, ${level})` };
 }
 
-// IP2Location.io - 使用免费 API
-function parseIp2locationIo(json) {
-  if (!json) return { usageType: null, fraudScore: null };
+// IP2Location.io - 从网页抓取数据
+function parseIp2locationIo(data) {
+  if (!data) return { usageType: null, fraudScore: null };
 
-  // 从 API 返回的 JSON 中提取 as_usage_type（如 DCH, ISP, COM 等）
-  const usageType = json.as_usage_type || null;
+  // 从抓取结果中提取 as_usage_type（如 DCH, ISP, COM 等）
+  const usageType = data.as_usage_type || null;
 
-  // 免费版没有 fraud_score，设为 null
-  const fraudScore = json.fraud_score ?? null;
+  // Fraud Score
+  const fraudScore = data.fraud_score ?? null;
 
   return { usageType, fraudScore };
 }
 
 function gradeIp2locationIo(fraudScore) {
   const s = toInt(fraudScore);
-  // 免费版没有 fraud_score，跳过评分
+  // 没有 fraud_score，跳过评分
   if (s === null) return { sev: -1, text: null };
-  // 来自 iptest.sh：<33 low, <66 medium, >=66 high
+  // 来自 iptest.sh：<33 low, <33~66 medium, >=66 high
   if (s >= 66) return { sev: 3, text: `IP2Location.io：⚠️ 高风险 (${s})` };
   if (s >= 33) return { sev: 1, text: `IP2Location.io：🔶 中风险 (${s})` };
   return { sev: 0, text: `IP2Location.io：✅ 低风险 (${s})` };
@@ -198,21 +198,19 @@ async function fetchIpapi(ip) {
 }
 
 async function fetchIp2locationIo(ip) {
-  // 直接访问 ip2location.io 网页，抓取页面中的 JSON 数据
+  // 直接访问 ip2location.io 网页，抓取页面中的数据
   const { data } = await httpGet(`https://www.ip2location.io/${encodeURIComponent(ip)}`);
   const html = String(data);
   
-  // 方法1：直接解析（如果返回的是纯 JSON）
-  const direct = safeJsonParse(html);
-  if (direct && direct.as_usage_type) return direct;
+  // 从 HTML 中提取 Usage Type，格式如：<label class="mb-0">Usage Type</label>\n<p class="ip-result">(DCH) Data Center/Web Hosting/Transit</p>
+  const usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*\(([A-Z]+)\)/i);
+  const usageType = usageMatch ? usageMatch[1] : null;
   
-  // 方法2：提取 as_usage_type 字段（从 HTML 中匹配）
-  const usageMatch = html.match(/"as_usage_type"\s*:\s*"([^"]*)"/);
-  if (usageMatch) {
-    return { as_usage_type: usageMatch[1] };
-  }
+  // 从 HTML 中提取 Fraud Score，格式如：<label class="mb-0">Fraud Score</label>\n<p class="ip-result">3</p>
+  const fraudMatch = html.match(/Fraud\s*Score<\/label>\s*<p[^>]*>\s*(\d+)/i);
+  const fraudScore = fraudMatch ? toInt(fraudMatch[1]) : null;
   
-  return null;
+  return { as_usage_type: usageType, fraud_score: fraudScore };
 }
 
 async function fetchDbipHtml(ip) {
