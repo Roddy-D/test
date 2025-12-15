@@ -1,10 +1,12 @@
 const IPPURE_URL = "https://my.ippure.com/v1/info";
-// iptest.sh 里用到的聚合接口（不需要各家 API Key）
 const CHECKPLACE = "https://ipinfo.check.place";
+
+// 从环境参数获取节点名
+const nodeName = $environment.params.node;
 
 function httpGet(url) {
   return new Promise((resolve, reject) => {
-    $httpClient.get(url, (err, resp, data) => {
+    $httpClient.get({ url, node: nodeName }, (err, resp, data) => {
       if (err) return reject(err);
       if (!data) return reject(new Error("empty response"));
       resolve({ resp, data });
@@ -46,7 +48,6 @@ function gradeIppure(score) {
 function gradeIPQS(score) {
   const s = toInt(score);
   if (s === null) return { sev: 2, text: "IPQS：获取失败" };
-  // 来自 iptest.sh：<75 low, <85 suspicious, <90 risky, >=90 highrisk
   if (s >= 90) return { sev: 4, text: `IPQS：🛑 高风险 (${s})` };
   if (s >= 85) return { sev: 3, text: `IPQS：⚠️ 存在风险 (${s})` };
   if (s >= 75) return { sev: 2, text: `IPQS：🔶 可疑 (${s})` };
@@ -56,7 +57,6 @@ function gradeIPQS(score) {
 function gradeScamalytics(score) {
   const s = toInt(score);
   if (s === null) return { sev: 2, text: "Scamalytics：获取失败" };
-  // 来自 iptest.sh：<20 low, <60 medium, <90 high, >=90 veryhigh
   if (s >= 90) return { sev: 4, text: `Scamalytics：🛑 极高风险 (${s})` };
   if (s >= 60) return { sev: 3, text: `Scamalytics：⚠️ 高风险 (${s})` };
   if (s >= 20) return { sev: 1, text: `Scamalytics：🔶 中风险 (${s})` };
@@ -66,7 +66,6 @@ function gradeScamalytics(score) {
 function gradeIP2Location(score) {
   const s = toInt(score);
   if (s === null) return { sev: 2, text: "IP2Location：获取失败" };
-  // 来自 iptest.sh：<33 low, <66 medium, >=66 high
   if (s >= 66) return { sev: 3, text: `IP2Location：⚠️ 高风险 (${s})` };
   if (s >= 33) return { sev: 1, text: `IP2Location：🔶 中风险 (${s})` };
   return { sev: 0, text: `IP2Location：✅ 低风险 (${s})` };
@@ -75,14 +74,12 @@ function gradeIP2Location(score) {
 function gradeAbuseIPDB(score) {
   const s = toInt(score);
   if (s === null) return { sev: 2, text: "AbuseIPDB：获取失败" };
-  // 来自 iptest.sh：<25 low, <75 high, >=75 dos
   if (s >= 75) return { sev: 4, text: `AbuseIPDB：🛑 建议封禁 (${s})` };
   if (s >= 25) return { sev: 3, text: `AbuseIPDB：⚠️ 高风险 (${s})` };
   return { sev: 0, text: `AbuseIPDB：✅ 低风险 (${s})` };
 }
 
 function gradeIpapi(abuserScoreText) {
-  // iptest.sh: .company.abuser_score 类似 "0.12 (Low)"
   if (!abuserScoreText || typeof abuserScoreText !== "string") {
     return { sev: 2, text: "ipapi：获取失败" };
   }
@@ -93,7 +90,6 @@ function gradeIpapi(abuserScoreText) {
   const level = String(m[2] || "").trim();
   const pct = Number.isFinite(ratio) ? `${Math.round(ratio * 10000) / 100}%` : "?";
 
-  // 来自 iptest.sh：Very Low/Low/Elevated/High/Very High
   const sevByLevel = {
     "Very Low": 0,
     Low: 0,
@@ -126,7 +122,6 @@ async function fetchCheckPlaceDb(ip, db) {
 }
 
 async function fetchDbipHtml(ip) {
-  // DB-IP 没有聚合 JSON，直接抓网页做轻量解析
   const { data } = await httpGet(`https://db-ip.com/${encodeURIComponent(ip)}`);
   return String(data);
 }
@@ -142,13 +137,12 @@ function gradeDbip(html) {
   return { sev: 2, text: `DB-IP：${riskText}` };
 }
 
-// 仅用 IP2Location 判断是否机房（其他来源不显示）
+// 仅用 IP2Location 判断是否机房
 function ip2locationHostingText(ip2) {
   const usage = String(ip2?.usage_type || "").toUpperCase();
   const asUsage = String(ip2?.as_info?.as_usage_type || "").toUpperCase();
   const isDc = ip2?.proxy?.is_data_center === true || ip2?.proxy?.is_public_proxy === true;
 
-  // 经验规则：DCH=数据中心；CDN=内容分发；其余如 ISP/MOB 更偏非机房
   const isHosting =
     isDc ||
     usage.startsWith("DCH") ||
@@ -190,7 +184,7 @@ function flagEmoji(code) {
   const asnText = base.asn ? `AS${base.asn} ${base.asOrganization || ""}`.trim() : (base.asOrganization || "");
   const flag = flagEmoji(base.countryCode);
 
-  // 2) 并发拉多个来源（IP2Location 必须要）
+  // 2) 并发拉多个来源
   const tasks = {
     ip2location: fetchCheckPlaceDb(ip, "ip2location"),
     ipqs: fetchCheckPlaceDb(ip, "ipqualityscore"),
@@ -213,7 +207,7 @@ function flagEmoji(code) {
     }
   }
 
-  // 3) 机房判断：只用 IP2Location（其余来源不显示）
+  // 3) 机房判断：只用 IP2Location
   const hostingLine = ip2locationHostingText(ok.ip2location);
 
   // 4) 各家标准分别打分
@@ -247,7 +241,7 @@ function flagEmoji(code) {
   // 6) 输出
   const riskLines = grades.map((g) => g.text).join("\n");
 
-  // 附加：风险因子小结（解释为什么高风险；但不用于机房判断）
+  // 附加：风险因子小结
   const factorParts = [];
   if (ok.ipdata && ok.ipdata.threat) {
     const t = ok.ipdata.threat;
@@ -276,6 +270,7 @@ function flagEmoji(code) {
 ASN：${asnText || "-"}
 位置：${flag} ${base.country || ""} ${base.city || ""}
 ${hostingLine}
+节点：${nodeName || "-"}
 
 ——多源评分——
 ${riskLines}${factorText}`,
