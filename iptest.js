@@ -68,6 +68,45 @@ function gradeIpapi(j) {
   return { sev, text: `ipapi：${label} (${pct}, ${level})` };
 }
 
+// IP2Location - 抓 demo 页面解析 Usage Type 和 Fraud Score
+function parseIp2location(html) {
+  if (!html) return { usageType: null, fraudScore: null };
+  
+  // 解析 Usage Type（如 DCH, ISP, COM 等）
+  const usageMatch = html.match(/Usage\s*Type[^<]*<[^>]*>([^<]+)</i) 
+    || html.match(/"usage_type"\s*:\s*"([^"]+)"/i);
+  const usageType = usageMatch ? usageMatch[1].trim() : null;
+  
+  // 解析 Fraud Score
+  const fraudMatch = html.match(/Fraud\s*Score[^<]*<[^>]*>(\d+)/i)
+    || html.match(/"fraud_score"\s*:\s*(\d+)/i);
+  const fraudScore = fraudMatch ? toInt(fraudMatch[1]) : null;
+  
+  return { usageType, fraudScore };
+}
+
+function gradeIp2location(fraudScore) {
+  const s = toInt(fraudScore);
+  if (s === null) return { sev: 2, text: "IP2Location：获取失败" };
+  // 来自 iptest.sh：<33 low, <66 medium, >=66 high
+  if (s >= 66) return { sev: 3, text: `IP2Location：⚠️ 高风险 (${s})` };
+  if (s >= 33) return { sev: 1, text: `IP2Location：🔶 中风险 (${s})` };
+  return { sev: 0, text: `IP2Location：✅ 低风险 (${s})` };
+}
+
+// IP2Location 机房判断（只用这个来源）
+function ip2locationHostingText(usageType) {
+  if (!usageType) return "是否机房：未知（IP2Location 获取失败）";
+  
+  const usage = String(usageType).toUpperCase();
+  // DCH=数据中心/机房；CDN=内容分发；ISP/MOB=家宽/移动
+  const isHosting = usage.startsWith("DCH") || usage.startsWith("CDN") || usage === "WEB";
+  
+  return isHosting
+    ? `是否机房：🏢 是（${usage}）`
+    : `是否机房：✅ 否（${usage}）`;
+}
+
 // DB-IP - 抓网页解析
 function gradeDbip(html) {
   if (!html) return { sev: 2, text: "DB-IP：获取失败" };
@@ -84,8 +123,10 @@ function gradeDbip(html) {
 // Scamalytics - 抓网页解析
 function gradeScamalytics(html) {
   if (!html) return { sev: 2, text: "Scamalytics：获取失败" };
-  // 页面上有 "Fraud Score: XX" 或类似文本
-  const scoreMatch = html.match(/Fraud\s*Score[:\s]*(\d+)/i);
+  // 页面上有 "Fraud Score: XX" 或 class="score" 里的数字
+  const scoreMatch = html.match(/Fraud\s*Score[:\s]*(\d+)/i) 
+    || html.match(/class="score"[^>]*>(\d+)/i)
+    || html.match(/"score"\s*:\s*(\d+)/i);
   if (!scoreMatch) return { sev: 2, text: "Scamalytics：获取失败" };
   
   const s = toInt(scoreMatch[1]);
@@ -115,30 +156,6 @@ function gradeIpwhois(j) {
   return { sev, text: `IPWhois：${label} (${items.join("/")})` };
 }
 
-// ========== 机房判断（只用 ipapi.is） ==========
-
-function ipapiHostingText(j) {
-  if (!j) return "是否机房：未知（ipapi 获取失败）";
-  
-  const isDc = j.is_datacenter === true;
-  const usageType = j.asn?.type || "";
-  const companyType = j.company?.type || "";
-  
-  const isHosting = isDc || 
-    usageType.toLowerCase() === "hosting" || 
-    companyType.toLowerCase() === "hosting";
-  
-  const detail = [
-    isDc ? "datacenter:true" : "",
-    usageType ? `asn:${usageType}` : "",
-    companyType ? `company:${companyType}` : "",
-  ].filter(Boolean).join(", ");
-
-  return isHosting
-    ? `是否机房：🏢 是（${detail}）`
-    : `是否机房：✅ 否（${detail || "residential/isp"}）`;
-}
-
 function flagEmoji(code) {
   if (!code) return "";
   let c = String(code).toUpperCase();
@@ -147,12 +164,18 @@ function flagEmoji(code) {
   return String.fromCodePoint(...c.split("").map((x) => 127397 + x.charCodeAt(0)));
 }
 
-// ========== 各家 API 请求 ==========
+// ========== 各家 API 请求（直接调用，不用聚合接口） ==========
 
 async function fetchIpapi(ip) {
   // https://api.ipapi.is/?q=IP - 免费，无需 key
   const { data } = await httpGet(`https://api.ipapi.is/?q=${encodeURIComponent(ip)}`);
   return safeJsonParse(data);
+}
+
+async function fetchIp2locationHtml(ip) {
+  // https://www.ip2location.com/demo/IP - 官方 demo 页面
+  const { data } = await httpGet(`https://www.ip2location.com/demo/${encodeURIComponent(ip)}`);
+  return String(data);
 }
 
 async function fetchDbipHtml(ip) {
@@ -191,9 +214,10 @@ async function fetchIpwhois(ip) {
   const asnText = base.asn ? `AS${base.asn} ${base.asOrganization || ""}`.trim() : (base.asOrganization || "");
   const flag = flagEmoji(base.countryCode);
 
-  // 2) 并发请求各家免费 API
+  // 2) 并发请求各家免费 API（直接调用，不用聚合接口）
   const tasks = {
     ipapi: fetchIpapi(ip),
+    ip2locHtml: fetchIp2locationHtml(ip),
     dbipHtml: fetchDbipHtml(ip),
     scamHtml: fetchScamalyticsHtml(ip),
     ipwhois: fetchIpwhois(ip),
@@ -211,13 +235,15 @@ async function fetchIpwhois(ip) {
     }
   }
 
-  // 3) 机房判断（用 ipapi.is）
-  const hostingLine = ipapiHostingText(ok.ipapi);
+  // 3) 解析 IP2Location（机房判断 + 评分）
+  const ip2loc = parseIp2location(ok.ip2locHtml);
+  const hostingLine = ip2locationHostingText(ip2loc.usageType);
 
   // 4) 各家评分
   const grades = [];
   grades.push(gradeIppure(base.fraudScore));
   grades.push(gradeIpapi(ok.ipapi));
+  grades.push(gradeIp2location(ip2loc.fraudScore));
   grades.push(gradeScamalytics(ok.scamHtml));
   grades.push(gradeDbip(ok.dbipHtml));
   grades.push(gradeIpwhois(ok.ipwhois));
@@ -233,6 +259,7 @@ async function fetchIpwhois(ip) {
     if (ok.ipapi.is_proxy === true) items.push("Proxy");
     if (ok.ipapi.is_tor === true) items.push("Tor");
     if (ok.ipapi.is_vpn === true) items.push("VPN");
+    if (ok.ipapi.is_datacenter === true) items.push("Datacenter");
     if (ok.ipapi.is_abuser === true) items.push("Abuser");
     if (ok.ipapi.is_crawler === true) items.push("Crawler");
     if (items.length) factorParts.push(`ipapi 因子：${items.join("/")}`);
