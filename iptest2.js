@@ -198,9 +198,21 @@ async function fetchIpapi(ip) {
 }
 
 async function fetchIp2locationIo(ip) {
-  // https://api.ip2location.io/?ip=IP - 免费 API（有限额度）
-  const { data } = await httpGet(`https://api.ip2location.io/?ip=${encodeURIComponent(ip)}`);
-  return safeJsonParse(data);
+  // 直接访问 ip2location.io 网页，抓取页面中的 JSON 数据
+  const { data } = await httpGet(`https://www.ip2location.io/${encodeURIComponent(ip)}`);
+  const html = String(data);
+  
+  // 方法1：直接解析（如果返回的是纯 JSON）
+  const direct = safeJsonParse(html);
+  if (direct && direct.as_usage_type) return direct;
+  
+  // 方法2：提取 as_usage_type 字段（从 HTML 中匹配）
+  const usageMatch = html.match(/"as_usage_type"\s*:\s*"([^"]*)"/);
+  if (usageMatch) {
+    return { as_usage_type: usageMatch[1] };
+  }
+  
+  return null;
 }
 
 async function fetchDbipHtml(ip) {
