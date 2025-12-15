@@ -1,4 +1,6 @@
 const IPPURE_URL = "https://my.ippure.com/v1/info";
+// 强制 IPv4 的 API
+const IPV4_API = "https://api4.ipify.org?format=json";
 
 // 从环境参数获取节点名
 const nodeName = $environment.params.node;
@@ -202,7 +204,15 @@ async function fetchIpwhois(ip) {
 // ========== 主逻辑 ==========
 
 (async () => {
-  // 1) 先拿 ippure（基础信息 + IP）
+  // 1) 强制获取 IPv4 地址
+  let ip = null;
+  try {
+    const { data: ipv4Data } = await httpGet(IPV4_API);
+    const ipv4Json = safeJsonParse(ipv4Data);
+    ip = ipv4Json?.ip || ipv4Data?.trim();
+  } catch (_) {}
+
+  // 2) 拿 ippure 基础信息（如果 IPv4 获取失败，用 ippure 的 IP 作为 fallback）
   const { data } = await httpGet(IPPURE_URL);
   const base = safeJsonParse(data);
   if (!base) {
@@ -210,11 +220,13 @@ async function fetchIpwhois(ip) {
     return;
   }
 
-  const ip = base.ip;
+  // 如果 IPv4 API 失败，fallback 到 ippure 的 IP
+  if (!ip) ip = base.ip;
+
   const asnText = base.asn ? `AS${base.asn} ${base.asOrganization || ""}`.trim() : (base.asOrganization || "");
   const flag = flagEmoji(base.countryCode);
 
-  // 2) 并发请求各家免费 API（直接调用，不用聚合接口）
+  // 3) 并发请求各家免费 API（直接调用，不用聚合接口）
   const tasks = {
     ipapi: fetchIpapi(ip),
     ip2locHtml: fetchIp2locationHtml(ip),
@@ -235,11 +247,11 @@ async function fetchIpwhois(ip) {
     }
   }
 
-  // 3) 解析 IP2Location（机房判断 + 评分）
+  // 4) 解析 IP2Location（机房判断 + 评分）
   const ip2loc = parseIp2location(ok.ip2locHtml);
   const hostingLine = ip2locationHostingText(ip2loc.usageType);
 
-  // 4) 各家评分
+  // 5) 各家评分
   const grades = [];
   grades.push(gradeIppure(base.fraudScore));
   grades.push(gradeIpapi(ok.ipapi));
@@ -248,11 +260,11 @@ async function fetchIpwhois(ip) {
   grades.push(gradeDbip(ok.dbipHtml));
   grades.push(gradeIpwhois(ok.ipwhois));
 
-  // 5) 全局最危险等级
+  // 6) 全局最危险等级
   const maxSev = grades.reduce((m, g) => Math.max(m, g.sev ?? 2), 0);
   const meta = severityMeta(maxSev);
 
-  // 6) 风险因子
+  // 7) 风险因子
   const factorParts = [];
   if (ok.ipapi) {
     const items = [];
@@ -275,7 +287,7 @@ async function fetchIpwhois(ip) {
   }
   const factorText = factorParts.length ? `\n\n——风险因子——\n${factorParts.join("\n")}` : "";
 
-  // 7) 输出
+  // 8) 输出
   const riskLines = grades.map((g) => g.text).join("\n");
 
   $done({
