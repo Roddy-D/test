@@ -70,72 +70,66 @@ function gradeIpapi(j) {
   return { sev, text: `ipapi：${label} (${pct}, ${level})` };
 }
 
-// IP2Location - 抓 demo 页面解析 Usage Type 和 Fraud Score
-function parseIp2location(html) {
-  if (!html) return { usageType: null, fraudScore: null };
+// IP2Location.io - 使用免费 API
+function parseIp2locationIo(json) {
+  if (!json) return { usageType: null, fraudScore: null };
 
-  // 解析 Usage Type（如 DCH, ISP, COM 等）
-  const usageMatch = html.match(/Usage\s*Type[^<]*<[^>]*>([^<]+)</i) 
-    || html.match(/"usage_type"\s*:\s*"([^"]+)"/i);
-  const usageType = usageMatch ? usageMatch[1].trim() : null;
+  // 从 API 返回的 JSON 中提取 as_usage_type（如 DCH, ISP, COM 等）
+  const usageType = json.as_usage_type || null;
 
-  // 解析 Fraud Score
-  const fraudMatch = html.match(/Fraud\s*Score[^<]*<[^>]*>(\d+)/i)
-    || html.match(/"fraud_score"\s*:\s*(\d+)/i);
-  const fraudScore = fraudMatch ? toInt(fraudMatch[1]) : null;
-
-
-
+  // 免费版没有 fraud_score，设为 null
+  const fraudScore = json.fraud_score ?? null;
 
   return { usageType, fraudScore };
 }
 
-function gradeIp2location(fraudScore) {
+function gradeIp2locationIo(fraudScore) {
   const s = toInt(fraudScore);
-  if (s === null) return { sev: 2, text: "IP2Location：获取失败" };
+  // 免费版没有 fraud_score，跳过评分
+  if (s === null) return { sev: -1, text: null };
   // 来自 iptest.sh：<33 low, <66 medium, >=66 high
-  if (s >= 66) return { sev: 3, text: `IP2Location：⚠️ 高风险 (${s})` };
-  if (s >= 33) return { sev: 1, text: `IP2Location：🔶 中风险 (${s})` };
-  return { sev: 0, text: `IP2Location：✅ 低风险 (${s})` };
+  if (s >= 66) return { sev: 3, text: `IP2Location.io：⚠️ 高风险 (${s})` };
+  if (s >= 33) return { sev: 1, text: `IP2Location.io：🔶 中风险 (${s})` };
+  return { sev: 0, text: `IP2Location.io：✅ 低风险 (${s})` };
 }
 
-// IP2Location 机房判断（只用这个来源）
+// IP2Location.io 机房判断（使用 as_usage_type 字段）
 function ip2locationHostingText(usageType) {
-  if (!usageType) return "IP类型：未知（IP2Location 获取失败）";
+  if (!usageType) return "IP类型：未知（获取失败）";
   
   const usage = String(usageType).toUpperCase();
   
-  // 各类型判断
-  if (usage.startsWith("DCH") || usage === "WEB") {
-    return `IP类型：🏢 数据中心/服务器 (${usage})`;
+  // 各类型判断（基于 IP2Location.io 的 as_usage_type）
+  if (usage.startsWith("DCH") || usage === "WEB" || usage === "SES") {
+    return `IP类型：🏢 数据中心/服务器 (${usageType})`;
   }
   if (usage.startsWith("CDN")) {
-    return `IP类型：🌐 CDN (${usage})`;
+    return `IP类型：🌐 CDN (${usageType})`;
   }
   if (usage.startsWith("MOB")) {
-    return `IP类型：📱 蜂窝移动网络 (${usage})`;
+    return `IP类型：📱 蜂窝移动网络 (${usageType})`;
   }
   if (usage.startsWith("ISP")) {
-    return `IP类型：🏠 家庭宽带 (${usage})`;
+    return `IP类型：🏠 家庭宽带 (${usageType})`;
   }
   if (usage.startsWith("COM")) {
-    return `IP类型：🏬 商业宽带 (${usage})`;
+    return `IP类型：🏬 商业宽带 (${usageType})`;
   }
   if (usage.startsWith("EDU")) {
-    return `IP类型：🎓 教育网络 (${usage})`;
+    return `IP类型：🎓 教育网络 (${usageType})`;
   }
   if (usage.startsWith("GOV")) {
-    return `IP类型：🏛️ 政府网络 (${usage})`;
+    return `IP类型：🏛️ 政府网络 (${usageType})`;
   }
   if (usage.startsWith("MIL")) {
-    return `IP类型：🎖️ 军用网络 (${usage})`;
+    return `IP类型：🎖️ 军用网络 (${usageType})`;
   }
   if (usage.startsWith("ORG")) {
-    return `IP类型：🏢 组织机构 (${usage})`;
+    return `IP类型：🏢 组织机构 (${usageType})`;
   }
   
   // 未知类型
-  return `IP类型：❓ ${usage}`;
+  return `IP类型：❓ ${usageType}`;
 }
 
 // DB-IP - 抓网页解析
@@ -203,10 +197,10 @@ async function fetchIpapi(ip) {
   return safeJsonParse(data);
 }
 
-async function fetchIp2locationHtml(ip) {
-  // https://www.ip2location.com/demo/IP - 官方 demo 页面
-  const { data } = await httpGet(`https://www.ip2location.com/demo/`);
-  return String(data);
+async function fetchIp2locationIo(ip) {
+  // https://api.ip2location.io/?ip=IP - 免费 API（有限额度）
+  const { data } = await httpGet(`https://api.ip2location.io/?ip=${encodeURIComponent(ip)}`);
+  return safeJsonParse(data);
 }
 
 async function fetchDbipHtml(ip) {
@@ -260,7 +254,7 @@ async function fetchIpwhois(ip) {
   // 3) 并发请求各家免费 API（直接调用，不用聚合接口）
   const tasks = {
     ipapi: fetchIpapi(ip),
-    ip2locHtml: fetchIp2locationHtml(ip),
+    ip2locIo: fetchIp2locationIo(ip),
     dbipHtml: fetchDbipHtml(ip),
     scamHtml: fetchScamalyticsHtml(ip),
     ipwhois: fetchIpwhois(ip),
@@ -278,8 +272,8 @@ async function fetchIpwhois(ip) {
     }
   }
 
-  // 4) 解析 IP2Location（机房判断 + 评分）
-  const ip2loc = parseIp2location(ok.ip2locHtml);
+  // 4) 解析 IP2Location.io（机房判断 + 评分）
+  const ip2loc = parseIp2locationIo(ok.ip2locIo);
   const hostingLine = ip2locationHostingText(ip2loc.usageType);
 
 
@@ -291,7 +285,8 @@ async function fetchIpwhois(ip) {
   const grades = [];
   grades.push(gradeIppure(base.fraudScore));
   grades.push(gradeIpapi(ok.ipapi));
-  grades.push(gradeIp2location(ip2loc.fraudScore));
+  const ip2locGrade = gradeIp2locationIo(ip2loc.fraudScore);
+  if (ip2locGrade.text) grades.push(ip2locGrade); // 免费版没有 fraud_score，不显示
   grades.push(gradeScamalytics(ok.scamHtml));
   grades.push(gradeDbip(ok.dbipHtml));
   grades.push(gradeIpwhois(ok.ipwhois));
