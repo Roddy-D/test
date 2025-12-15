@@ -98,15 +98,41 @@ function gradeIp2location(fraudScore) {
 
 // IP2Location 机房判断（只用这个来源）
 function ip2locationHostingText(usageType) {
-  if (!usageType) return "是否机房：未知（IP2Location 获取失败）";
+  if (!usageType) return "IP类型：未知（IP2Location 获取失败）";
   
   const usage = String(usageType).toUpperCase();
-  // DCH=数据中心/机房；CDN=内容分发；ISP/MOB=家宽/移动
-  const isHosting = usage.startsWith("DCH") || usage.startsWith("CDN") || usage === "WEB";
   
-  return isHosting
-    ? `是否机房：🏢 是（${usage}）`
-    : `是否机房：✅ 否（${usage}）`;
+  // 各类型判断
+  if (usage.startsWith("DCH") || usage === "WEB") {
+    return `IP类型：🏢 数据中心/服务器 (${usage})`;
+  }
+  if (usage.startsWith("CDN")) {
+    return `IP类型：🌐 CDN (${usage})`;
+  }
+  if (usage.startsWith("MOB")) {
+    return `IP类型：📱 蜂窝移动网络 (${usage})`;
+  }
+  if (usage.startsWith("ISP")) {
+    return `IP类型：🏠 家庭宽带 (${usage})`;
+  }
+  if (usage.startsWith("COM")) {
+    return `IP类型：🏬 商业宽带 (${usage})`;
+  }
+  if (usage.startsWith("EDU")) {
+    return `IP类型：🎓 教育网络 (${usage})`;
+  }
+  if (usage.startsWith("GOV")) {
+    return `IP类型：🏛️ 政府网络 (${usage})`;
+  }
+  if (usage.startsWith("MIL")) {
+    return `IP类型：🎖️ 军用网络 (${usage})`;
+  }
+  if (usage.startsWith("ORG")) {
+    return `IP类型：🏢 组织机构 (${usage})`;
+  }
+  
+  // 未知类型
+  return `IP类型：❓ ${usage}`;
 }
 
 // DB-IP - 抓网页解析
