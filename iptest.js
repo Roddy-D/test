@@ -370,14 +370,18 @@ async function fetchIp2locationIo(ip) {
   // 多源评分
   html += `</br><b><font color=#FF6347>—— 多源评分 ——</font></b></br>`;
   for (const line of riskLines) {
-    html += `<b>${line}</b></br>`;
+    const [name, ...rest] = line.split("：");
+    const result = rest.join("：");
+    html += `${name}：<b>${result}</b></br>`;
   }
   
   // 风险因子
   if (factorParts.length) {
     html += `</br><b><font color=#FF6347>—— 风险因子 ——</font></b></br>`;
     for (const factor of factorParts) {
-      html += `<b>${factor}</b></br>`;
+      const [fname, ...frest] = factor.split("：");
+      const fresult = frest.join("：");
+      html += `${fname}：<b>${fresult}</b></br>`;
     }
   }
   
