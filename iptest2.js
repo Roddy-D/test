@@ -362,29 +362,25 @@ async function fetchIp2locationIo(ip) {
 
   // 构建 HTML 输出
   let html = `<p style="text-align: center; font-family: -apple-system; font-size: large; font-weight: thin">`;
-  html += `-------------------------------`;
-  html += `</br><b><font color=#6959CD>IP</font> : </b><font color=>${ip}</font></br>`;
+  html += `<b><font color=#6959CD>IP</font> : </b><font color=>${ip}</font></br>`;
   html += `<b><font color=#6959CD>ASN</font> : </b><font color=>${asnText}</font></br>`;
   html += `<b><font color=#6959CD>位置</font> : </b><font color=>${flag} ${country} ${city}</font></br>`;
   html += `<b><font color=#6959CD>类型</font> : </b><font color=>${hostingLine.replace("IP类型：", "")}</font></br>`;
-  html += `-------------------------------`;
   
   // 多源评分
   html += `</br><b><font color=#FF6347>—— 多源评分 ——</font></b></br>`;
   for (const line of riskLines) {
-    html += `<font color=>${line}</font></br>`;
+    html += `<b>${line}</b></br>`;
   }
   
   // 风险因子
   if (factorParts.length) {
-    html += `-------------------------------`;
     html += `</br><b><font color=#FF6347>—— 风险因子 ——</font></b></br>`;
     for (const factor of factorParts) {
-      html += `<font color=>${factor}</font></br>`;
+      html += `<b>${factor}</b></br>`;
     }
   }
   
-  html += `-------------------------------`;
   html += `</br><font color=#6959CD><b>节点</b> ➟ ${nodeName || "-"}</font>`;
   html += `</p>`;
 
