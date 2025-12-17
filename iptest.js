@@ -249,6 +249,30 @@ async function fetchIp2locationIo(ip) {
   };
 }
 
+
+async function fetchIpinfoIo(ip) {
+  const { data } = await httpGet(`https://ipinfo.io/${encodeURIComponent(ip)}`, {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept": "text/html"
+  });
+  const html = String(data);
+  
+
+  const detected = [];
+  const privacyTypes = ["VPN", "Proxy", "Tor", "Relay", "Hosting", "Residential Proxy"];
+  for (const type of privacyTypes) {
+    const regex = new RegExp(`aria-label="${type}\\s+Detected"`, "i");
+    if (regex.test(html)) {
+      detected.push(type);
+    }
+  }
+  
+  const asnTypeMatch = html.match(/>ASN type<\/span>\s*<\/td>\s*<td>([^<]+)</i);
+  const asnType = asnTypeMatch ? asnTypeMatch[1].trim() : null;
+  
+  return { detected, asnType };
+}
+
 // ========== 主逻辑 ==========
 
 (async () => {
@@ -274,6 +298,7 @@ async function fetchIp2locationIo(ip) {
   const tasks = {
     ipapi: fetchIpapi(ip),
     ip2locIo: fetchIp2locationIo(ip),
+    ipinfoIo: fetchIpinfoIo(ip),
     dbipHtml: fetchDbipHtml(ip),
     scamHtml: fetchScamalyticsHtml(ip),
     ipwhois: fetchIpwhois(ip),
@@ -349,6 +374,10 @@ async function fetchIp2locationIo(ip) {
     if (sec.hosting === true) items.push("Hosting");
     if (items.length) factorParts.push(`IPWhois 因子：${items.join("/")}`);
   }
+  // ipinfo.io 因子
+  if (ok.ipinfoIo && ok.ipinfoIo.detected && ok.ipinfoIo.detected.length) {
+    factorParts.push(`ipinfo.io 因子：${ok.ipinfoIo.detected.join("/")}`);
+  }
   if (ip2locProxyItems.length === 0 && ip2loc.usageType && isRiskyUsageType(ip2loc.usageType)) {
     const usageDesc = {
       "DCH": "数据中心", "WEB": "Web托管", "SES": "搜索引擎",
@@ -375,9 +404,9 @@ async function fetchIp2locationIo(ip) {
     html += `${name}：<b>${result}</b></br>`;
   }
   
-  // 风险因子
+  // IP类型风险
   if (factorParts.length) {
-    html += `</br><b><font color=#FF6347>—— 风险因子 ——</font></b></br>`;
+    html += `</br><b><font color=#FF6347>—— IP类型风险 ——</font></b></br>`;
     for (const factor of factorParts) {
       const [fname, ...frest] = factor.split("：");
       const fresult = frest.join("：");
