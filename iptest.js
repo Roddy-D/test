@@ -41,10 +41,10 @@ function severityMeta(sev) {
 function gradeIppure(score) {
   const s = toInt(score);
   if (s === null) return { sev: 2, text: "IPPure：获取失败" };
-  if (s >= 80) return { sev: 4, text: `IPPure：🛑 极高风险 (${s})` };
-  if (s >= 70) return { sev: 3, text: `IPPure：⚠️ 高风险 (${s})` };
-  if (s >= 40) return { sev: 1, text: `IPPure：🔶 中等风险 (${s})` };
-  return { sev: 0, text: `IPPure：✅ 低风险 (${s})` };
+  if (s >= 80) return { sev: 4, text: `IPPure：<font color=#FF3B30>🛑 极高风险 (${s})</font>` };
+  if (s >= 70) return { sev: 3, text: `IPPure：<font color=#FF3B30>⚠️ 高风险 (${s})</font>` };
+  if (s >= 40) return { sev: 1, text: `IPPure：<font color=#FF9500>🔶 中等风险 (${s})</font>` };
+  return { sev: 0, text: `IPPure：<font color=#34C759>✅ 低风险 (${s})</font>` };
 }
 
 // ipapi.is
@@ -64,9 +64,10 @@ function gradeIpapi(j) {
 
   const sevByLevel = { "Very Low": 0, Low: 0, Elevated: 2, High: 3, "Very High": 4 };
   const sev = sevByLevel[level] ?? 2;
+  const color = sev >= 3 ? "#FF3B30" : sev >= 2 ? "#FF9500" : "#34C759";
   const label = sev >= 4 ? "🛑 极高风险" : sev >= 3 ? "⚠️ 高风险" : sev >= 2 ? "🔶 较高风险" : "✅ 低风险";
 
-  return { sev, text: `ipapi：${label} (${pct}, ${level})` };
+  return { sev, text: `ipapi：<font color=${color}>${label} (${pct}, ${level})</font>` };
 }
 
 // IP2Location.io
@@ -83,9 +84,9 @@ function parseIp2locationIo(data) {
 function gradeIp2locationIo(fraudScore) {
   const s = toInt(fraudScore);
   if (s === null) return { sev: -1, text: null };
-  if (s >= 66) return { sev: 3, text: `IP2Location.io：⚠️ 高风险 (${s})` };
-  if (s >= 33) return { sev: 1, text: `IP2Location.io：🔶 中风险 (${s})` };
-  return { sev: 0, text: `IP2Location.io：✅ 低风险 (${s})` };
+  if (s >= 66) return { sev: 3, text: `IP2Location.io：<font color=#FF3B30>⚠️ 高风险 (${s})</font>` };
+  if (s >= 33) return { sev: 1, text: `IP2Location.io：<font color=#FF9500>🔶 中风险 (${s})</font>` };
+  return { sev: 0, text: `IP2Location.io：<font color=#34C759>✅ 低风险 (${s})</font>` };
 }
 
 function ip2locationHostingText(usageType) {
@@ -141,9 +142,9 @@ function gradeDbip(html) {
   const riskText = (riskTextMatch ? riskTextMatch[1] : "").toLowerCase();
   if (!riskText) return { sev: 2, text: "DB-IP：获取失败" };
 
-  if (riskText === "high") return { sev: 3, text: "DB-IP：⚠️ 高风险 (high)" };
-  if (riskText === "medium") return { sev: 1, text: "DB-IP：🔶 中风险 (medium)" };
-  if (riskText === "low") return { sev: 0, text: "DB-IP：✅ 低风险 (low)" };
+  if (riskText === "high") return { sev: 3, text: "DB-IP：<font color=#FF3B30>⚠️ 高风险 (high)</font>" };
+  if (riskText === "medium") return { sev: 1, text: "DB-IP：<font color=#FF9500>🔶 中风险 (medium)</font>" };
+  if (riskText === "low") return { sev: 0, text: "DB-IP：<font color=#34C759>✅ 低风险 (low)</font>" };
   return { sev: 2, text: `DB-IP：${riskText}` };
 }
 
@@ -157,10 +158,10 @@ function gradeScamalytics(html) {
   
   const s = toInt(scoreMatch[1]);
   if (s === null) return { sev: 2, text: "Scamalytics：获取失败" };
-  if (s >= 90) return { sev: 4, text: `Scamalytics：🛑 极高风险 (${s})` };
-  if (s >= 60) return { sev: 3, text: `Scamalytics：⚠️ 高风险 (${s})` };
-  if (s >= 20) return { sev: 1, text: `Scamalytics：🔶 中风险 (${s})` };
-  return { sev: 0, text: `Scamalytics：✅ 低风险 (${s})` };
+  if (s >= 90) return { sev: 4, text: `Scamalytics：<font color=#FF3B30>🛑 极高风险 (${s})</font>` };
+  if (s >= 60) return { sev: 3, text: `Scamalytics：<font color=#FF3B30>⚠️ 高风险 (${s})</font>` };
+  if (s >= 20) return { sev: 1, text: `Scamalytics：<font color=#FF9500>🔶 中风险 (${s})</font>` };
+  return { sev: 0, text: `Scamalytics：<font color=#34C759>✅ 低风险 (${s})</font>` };
 }
 
 // IPWhois
@@ -175,11 +176,12 @@ function gradeIpwhois(j) {
   if (sec.hosting === true) items.push("Hosting");
   
   if (items.length === 0) {
-    return { sev: 0, text: "IPWhois：✅ 低风险（无标记）" };
+    return { sev: 0, text: "IPWhois：<font color=#34C759>✅ 低风险（无标记）</font>" };
   }
   const sev = items.includes("Tor") ? 3 : items.length >= 2 ? 2 : 1;
+  const color = sev >= 3 ? "#FF3B30" : "#FF9500";
   const label = sev >= 3 ? "⚠️ 高风险" : sev >= 2 ? "🔶 较高风险" : "🔶 有标记";
-  return { sev, text: `IPWhois：${label} (${items.join("/")})` };
+  return { sev, text: `IPWhois：<font color=${color}>${label} (${items.join("/")})</font>` };
 }
 
 function flagEmoji(code) {
@@ -219,9 +221,7 @@ async function fetchIp2locationIo(ip) {
   const { data } = await httpGet(`https://www.ip2location.io/${encodeURIComponent(ip)}`);
   const html = String(data);
   
-  // Usage Type: 支持两种格式
-  // 1. (DCH) Data Center/Web Hosting/Transit → "DCH"
-  // 2. ISP/MOB → "ISP/MOB"
+  // Usage Type
   let usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*\(([A-Z]+)\)/i);
   if (!usageMatch) {
     usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*([A-Z]+(?:\/[A-Z]+)?)\s*</i);
@@ -351,9 +351,9 @@ async function fetchIpinfoIo(ip) {
     ip2locProxyItems.push(`威胁:${ip2loc.threat}`);
   }
   if (ip2locProxyItems.length) {
-    factorParts.push(`IP2Location 因子：${ip2locProxyItems.join("/")}`);
+    factorParts.push(`IP2Location 检测类型：${ip2locProxyItems.join("/")}`);
   }
-  // ipapi 因子
+  // ipapi 检测类型
   if (ok.ipapi) {
     const items = [];
     if (ok.ipapi.is_proxy === true) items.push("Proxy");
@@ -362,9 +362,9 @@ async function fetchIpinfoIo(ip) {
     if (ok.ipapi.is_datacenter === true) items.push("Datacenter");
     if (ok.ipapi.is_abuser === true) items.push("Abuser");
     if (ok.ipapi.is_crawler === true) items.push("Crawler");
-    if (items.length) factorParts.push(`ipapi 因子：${items.join("/")}`);
+    if (items.length) factorParts.push(`ipapi 检测类型：${items.join("/")}`);
   }
-  // IPWhois 因子
+  // IPWhois 检测类型
   if (ok.ipwhois && ok.ipwhois.security) {
     const sec = ok.ipwhois.security;
     const items = [];
@@ -372,11 +372,11 @@ async function fetchIpinfoIo(ip) {
     if (sec.tor === true) items.push("Tor");
     if (sec.vpn === true) items.push("VPN");
     if (sec.hosting === true) items.push("Hosting");
-    if (items.length) factorParts.push(`IPWhois 因子：${items.join("/")}`);
+    if (items.length) factorParts.push(`IPWhois 检测类型：${items.join("/")}`);
   }
-  // ipinfo.io 因子
+  // ipinfo.io 检测类型
   if (ok.ipinfoIo && ok.ipinfoIo.detected && ok.ipinfoIo.detected.length) {
-    factorParts.push(`ipinfo.io 因子：${ok.ipinfoIo.detected.join("/")}`);
+    factorParts.push(`ipinfo.io 检测类型：${ok.ipinfoIo.detected.join("/")}`);
   }
   if (ip2locProxyItems.length === 0 && ip2loc.usageType && isRiskyUsageType(ip2loc.usageType)) {
     const usageDesc = {
@@ -385,7 +385,7 @@ async function fetchIpinfoIo(ip) {
     };
     const usage = String(ip2loc.usageType).toUpperCase();
     const desc = usageDesc[usage] || usage;
-    factorParts.push(`IP2Location 因子：${desc} (${ip2loc.usageType})`);
+    factorParts.push(`IP2Location 检测类型：${desc} (${ip2loc.usageType})`);
   }
   const riskLines = grades.map((g) => g.text).filter(Boolean);
 
@@ -401,7 +401,7 @@ async function fetchIpinfoIo(ip) {
   for (const line of riskLines) {
     const [name, ...rest] = line.split("：");
     const result = rest.join("：");
-    html += `${name}：<b>${result}</b></br>`;
+    html += `<b>${name}</b>：${result}</br>`;
   }
   
   // IP类型风险
@@ -410,7 +410,7 @@ async function fetchIpinfoIo(ip) {
     for (const factor of factorParts) {
       const [fname, ...frest] = factor.split("：");
       const fresult = frest.join("：");
-      html += `${fname}：<b>${fresult}</b></br>`;
+      html += `<b>${fname}</b>：${fresult}</br>`;
     }
   }
   
