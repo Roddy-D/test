@@ -163,47 +163,6 @@ function gradeScamalytics(html) {
   return { sev: 0, text: `Scamalytics：✅ 低风险 (${s})` };
 }
 
-// IPQS (IPQualityScore)
-function gradeIpqs(j) {
-  if (!j || j.fraud_score === undefined) return { sev: 2, text: "IPQS：获取失败" };
-  const s = toInt(j.fraud_score);
-  if (s === null) return { sev: 2, text: "IPQS：获取失败" };
-  if (s >= 90) return { sev: 4, text: `IPQS：🛑 极高风险 (${s})` };
-  if (s >= 85) return { sev: 3, text: `IPQS：⚠️ 高风险 (${s})` };
-  if (s >= 75) return { sev: 2, text: `IPQS：🔶 可疑 (${s})` };
-  return { sev: 0, text: `IPQS：✅ 低风险 (${s})` };
-}
-
-// AbuseIPDB
-function gradeAbuseipdb(j) {
-  if (!j || !j.data || j.data.abuseConfidenceScore === undefined) return { sev: 2, text: "AbuseIPDB：获取失败" };
-  const s = toInt(j.data.abuseConfidenceScore);
-  if (s === null) return { sev: 2, text: "AbuseIPDB：获取失败" };
-  if (s >= 75) return { sev: 4, text: `AbuseIPDB：🛑 建议封禁 (${s}%)` };
-  if (s >= 25) return { sev: 3, text: `AbuseIPDB：⚠️ 高风险 (${s}%)` };
-  return { sev: 0, text: `AbuseIPDB：✅ 低风险 (${s}%)` };
-}
-
-// ipdata.co
-function gradeIpdata(j) {
-  if (!j || !j.threat) return { sev: 2, text: "ipdata：获取失败" };
-  const t = j.threat;
-  const items = [];
-  if (t.is_proxy === true) items.push("Proxy");
-  if (t.is_tor === true) items.push("Tor");
-  if (t.is_datacenter === true) items.push("Datacenter");
-  if (t.is_known_abuser === true) items.push("Abuser");
-  if (t.is_known_attacker === true) items.push("Attacker");
-  if (t.is_threat === true) items.push("Threat");
-
-  if (items.length === 0) {
-    return { sev: 0, text: "ipdata：✅ 低风险（无标记）" };
-  }
-  const sev = items.includes("Attacker") || items.includes("Threat") ? 3 : items.length >= 2 ? 2 : 1;
-  const label = sev >= 3 ? "⚠️ 高风险" : sev >= 2 ? "🔶 较高风险" : "🔶 有标记";
-  return { sev, text: `ipdata：${label} (${items.join("/")})` };
-}
-
 function flagEmoji(code) {
   if (!code) return "";
   let c = String(code).toUpperCase();
@@ -285,22 +244,6 @@ async function fetchIpinfoIo(ip) {
   return { detected, asnType };
 }
 
-// ipinfo.check.place 代理接口
-async function fetchIpqs(ip) {
-  const { data } = await httpGet(`https://ipinfo.check.place/${encodeURIComponent(ip)}?db=ipqualityscore`);
-  return safeJsonParse(data);
-}
-
-async function fetchAbuseipdb(ip) {
-  const { data } = await httpGet(`https://ipinfo.check.place/${encodeURIComponent(ip)}?db=abuseipdb`);
-  return safeJsonParse(data);
-}
-
-async function fetchIpdata(ip) {
-  const { data } = await httpGet(`https://ipinfo.check.place/${encodeURIComponent(ip)}?db=ipdata`);
-  return safeJsonParse(data);
-}
-
 // ========== 主逻辑 ==========
 
 (async () => {
@@ -329,7 +272,6 @@ async function fetchIpdata(ip) {
     ipinfoIo: fetchIpinfoIo(ip),
     dbipHtml: fetchDbipHtml(ip),
     scamHtml: fetchScamalyticsHtml(ip),
-    ipqs: fetchIpqs(ip),
   };
 
   const results = await Promise.allSettled(
@@ -361,7 +303,6 @@ async function fetchIpdata(ip) {
   if (ip2locGrade.text) grades.push(ip2locGrade);
   grades.push(gradeScamalytics(ok.scamHtml));
   grades.push(gradeDbip(ok.dbipHtml));
-  grades.push(gradeIpqs(ok.ipqs));
 
   const maxSev = grades.reduce((m, g) => Math.max(m, g.sev ?? 2), 0);
   const meta = severityMeta(maxSev);
