@@ -330,8 +330,6 @@ async function fetchIpdata(ip) {
     dbipHtml: fetchDbipHtml(ip),
     scamHtml: fetchScamalyticsHtml(ip),
     ipqs: fetchIpqs(ip),
-    abuseipdb: fetchAbuseipdb(ip),
-    ipdata: fetchIpdata(ip),
   };
 
   const results = await Promise.allSettled(
@@ -364,8 +362,6 @@ async function fetchIpdata(ip) {
   grades.push(gradeScamalytics(ok.scamHtml));
   grades.push(gradeDbip(ok.dbipHtml));
   grades.push(gradeIpqs(ok.ipqs));
-  grades.push(gradeAbuseipdb(ok.abuseipdb));
-  grades.push(gradeIpdata(ok.ipdata));
 
   const maxSev = grades.reduce((m, g) => Math.max(m, g.sev ?? 2), 0);
   const meta = severityMeta(maxSev);
