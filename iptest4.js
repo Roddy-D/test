@@ -163,6 +163,26 @@ function gradeScamalytics(html) {
   return { sev: 0, text: `Scamalytics：✅ 低风险 (${s})` };
 }
 
+// ipregistry
+function gradeIpregistry(j) {
+  if (!j || j.code) return { sev: 2, text: "ipregistry：获取失败" };
+
+  const sec = j.security || {};
+  const items = [];
+  if (sec.is_proxy === true) items.push("Proxy");
+  if (sec.is_tor === true || sec.is_tor_exit === true) items.push("Tor");
+  if (sec.is_vpn === true) items.push("VPN");
+  if (sec.is_cloud_provider === true) items.push("Hosting");
+  if (sec.is_abuser === true) items.push("Abuser");
+
+  if (items.length === 0) {
+    return { sev: 0, text: "ipregistry：✅ 低风险（无标记）" };
+  }
+  const sev = items.includes("Tor") ? 3 : items.includes("Abuser") ? 3 : items.length >= 2 ? 2 : 1;
+  const label = sev >= 3 ? "⚠️ 高风险" : sev >= 2 ? "🔶 较高风险" : "🔶 有标记";
+  return { sev, text: `ipregistry：${label} (${items.join("/")})` };
+}
+
 function flagEmoji(code) {
   if (!code) return "";
   let c = String(code).toUpperCase();
@@ -186,6 +206,29 @@ async function fetchDbipHtml(ip) {
 async function fetchScamalyticsHtml(ip) {
   const { data } = await httpGet(`https://scamalytics.com/ip/${encodeURIComponent(ip)}`);
   return String(data);
+}
+
+async function fetchIpregistry(ip) {
+  // 1. 先获取首页抓取 API Key
+  let apiKey = "sb69ksjcajfs4c"; // 备用 key
+  try {
+    const { data: html } = await httpGet("https://ipregistry.co", {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    });
+    const keyMatch = String(html).match(/apiKey="([a-zA-Z0-9]+)"/);
+    if (keyMatch) apiKey = keyMatch[1];
+  } catch (_) { }
+
+  // 2. 使用 key 调用 API
+  const { data } = await httpGet(
+    `https://api.ipregistry.co/${encodeURIComponent(ip)}?hostname=true&key=${apiKey}`,
+    {
+      "Origin": "https://ipregistry.co",
+      "Referer": "https://ipregistry.co/",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+  );
+  return safeJsonParse(data);
 }
 
 async function fetchIp2locationIo(ip) {
@@ -272,6 +315,7 @@ async function fetchIpinfoIo(ip) {
     ipinfoIo: fetchIpinfoIo(ip),
     dbipHtml: fetchDbipHtml(ip),
     scamHtml: fetchScamalyticsHtml(ip),
+    ipregistry: fetchIpregistry(ip),
   };
 
   const results = await Promise.allSettled(
@@ -303,6 +347,7 @@ async function fetchIpinfoIo(ip) {
   if (ip2locGrade.text) grades.push(ip2locGrade);
   grades.push(gradeScamalytics(ok.scamHtml));
   grades.push(gradeDbip(ok.dbipHtml));
+  grades.push(gradeIpregistry(ok.ipregistry));
 
   const maxSev = grades.reduce((m, g) => Math.max(m, g.sev ?? 2), 0);
   const meta = severityMeta(maxSev);
@@ -337,6 +382,17 @@ async function fetchIpinfoIo(ip) {
   // ipinfo.io 检测类型
   if (ok.ipinfoIo && ok.ipinfoIo.detected && ok.ipinfoIo.detected.length) {
     factorParts.push(`ipinfo.io 检测类型：${ok.ipinfoIo.detected.join("/")}`);
+  }
+  // ipregistry 检测类型
+  if (ok.ipregistry && ok.ipregistry.security) {
+    const sec = ok.ipregistry.security;
+    const items = [];
+    if (sec.is_proxy === true) items.push("Proxy");
+    if (sec.is_tor === true || sec.is_tor_exit === true) items.push("Tor");
+    if (sec.is_vpn === true) items.push("VPN");
+    if (sec.is_cloud_provider === true) items.push("Hosting");
+    if (sec.is_abuser === true) items.push("Abuser");
+    if (items.length) factorParts.push(`ipregistry 检测类型：${items.join("/")}`);
   }
   if (ip2locProxyItems.length === 0 && ip2loc.usageType && isRiskyUsageType(ip2loc.usageType)) {
     const usageDesc = {
