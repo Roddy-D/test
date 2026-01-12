@@ -210,7 +210,7 @@ async function fetchScamalyticsHtml(ip) {
 
 async function fetchIpregistry(ip) {
   // 1. 先获取首页抓取 API Key
-  let apiKey = "sb69ksjcajfs4c"; // 备用 key
+  let apiKey = null;
   try {
     const { data: html } = await httpGet("https://ipregistry.co", {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -218,6 +218,8 @@ async function fetchIpregistry(ip) {
     const keyMatch = String(html).match(/apiKey="([a-zA-Z0-9]+)"/);
     if (keyMatch) apiKey = keyMatch[1];
   } catch (_) { }
+
+  if (!apiKey) throw new Error("无法获取 API Key");
 
   // 2. 使用 key 调用 API
   const { data } = await httpGet(
