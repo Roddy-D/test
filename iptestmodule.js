@@ -268,8 +268,8 @@ async function fetchIpinfoIo(ip) {
   const meta = severityMeta(maxSev);
   const riskLines = grades.map((g) => g.text).filter(Boolean);
 
-  // 纯文本输出
-  let content = `IP：${ip}
+// 纯文本输出
+let content = `IP：${ip}
 ASN：${asnText}
 位置：${flag} ${country} ${city}
 类型：${hostingLine}
@@ -277,7 +277,39 @@ ASN：${asnText}
 —— 多源评分 ——
 ${riskLines.join('\n')}`;
 
-  if (nodeName) content += `\n\n节点：${nodeName}`;
+// IP类型风险
+const factorParts = [];
+if (ip2loc.isProxy) factorParts.push("Proxy");
+if (ip2loc.proxyType && ip2loc.proxyType !== "-") factorParts.push(ip2loc.proxyType);
+if (ip2loc.threat && ip2loc.threat !== "-") factorParts.push(`威胁:${ip2loc.threat}`);
+if (ok.ipapi) {
+  const items = [];
+  if (ok.ipapi.is_proxy === true) items.push("Proxy");
+  if (ok.ipapi.is_tor === true) items.push("Tor");
+  if (ok.ipapi.is_vpn === true) items.push("VPN");
+  if (ok.ipapi.is_datacenter === true) items.push("Datacenter");
+  if (ok.ipapi.is_abuser === true) items.push("Abuser");
+  if (items.length) factorParts.push(`ipapi: ${items.join("/")}`);
+}
+if (ok.ipinfoIo?.detected?.length) {
+  factorParts.push(`ipinfo: ${ok.ipinfoIo.detected.join("/")}`);
+}
+if (ok.ipregistry?.security) {
+  const sec = ok.ipregistry.security;
+  const items = [];
+  if (sec.is_proxy === true) items.push("Proxy");
+  if (sec.is_tor === true) items.push("Tor");
+  if (sec.is_vpn === true) items.push("VPN");
+  if (sec.is_cloud_provider === true) items.push("Hosting");
+  if (sec.is_abuser === true) items.push("Abuser");
+  if (items.length) factorParts.push(`ipregistry: ${items.join("/")}`);
+}
+
+if (factorParts.length) {
+  content += `\n\n—— IP类型风险 ——\n${factorParts.join('\n')}`;
+}
+
+if (nodeName) content += `\n\n节点：${nodeName}`;
 
   $done({
     title: "节点 IP 风险汇总",
