@@ -1,11 +1,21 @@
 const IPPURE_URL = "https://my.ippure.com/v1/info";
 const IPV4_API = "http://ip-api.com/json?lang=zh-CN";
 
-const nodeName = (typeof $argument !== 'undefined' && $argument) || '';
+const MarkIP = ((typeof $argument !== 'undefined' && $argument) || 'false').toLowerCase() === 'true';
+
+function maskIP(ip) {
+  if (!ip) return '';
+  if (ip.includes('.')) {
+    const p = ip.split('.');
+    return `${p[0]}.${p[1]}.*.*`;
+  }
+  const p6 = ip.split(':');
+  return `${p6[0]}:${p6[1]}:*:*:*:*:*:*`;
+}
 
 function httpGet(url, headers = {}) {
   return new Promise((resolve, reject) => {
-    $httpClient.get({ url, node: nodeName, headers }, (err, resp, data) => {
+    $httpClient.get({ url, headers }, (err, resp, data) => {
       if (err) return reject(err);
       if (!data) return reject(new Error("empty response"));
       resolve({ resp, data });
@@ -269,7 +279,9 @@ async function fetchIpinfoIo(ip) {
   const riskLines = grades.map((g) => g.text).filter(Boolean);
 
 // 纯文本输出
-let content = `IP：${ip}
+const showIP = MarkIP ? maskIP(ip) : ip;
+
+let content = `IP：${showIP}
 ASN：${asnText}
 位置：${flag} ${country} ${city}
 类型：${hostingLine}
@@ -308,8 +320,6 @@ if (ok.ipregistry?.security) {
 if (factorParts.length) {
   content += `\n\n—— IP类型风险 ——\n${factorParts.join('\n')}`;
 }
-
-if (nodeName) content += `\n\n节点：${nodeName}`;
 
   $done({
     title: "节点 IP 风险汇总",
