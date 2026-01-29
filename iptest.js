@@ -2,7 +2,7 @@ const IPPURE_URL = "https://my.ippure.com/v1/info";
 const IPV4_API = "http://ip-api.com/json?lang=zh-CN";
 
 // 从环境参数获取节点名
-const nodeName = $environment.params.node;
+const nodeName = (typeof $argument !== 'undefined' && $argument) || '';
 
 function httpGet(url, headers = {}) {
   return new Promise((resolve, reject) => {
