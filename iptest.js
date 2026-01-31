@@ -4,7 +4,12 @@ const IPAPI_IS_URL = "https://api.ipapi.is/";
 
 // 从环境参数获取节点名
 const nodeName = $environment.params.node;
-
+let maskIP = false;
+try {
+  $notification.post("调试", `$argument 类型: ${typeof $argument}`, `值: ${JSON.stringify($argument)}`);
+} catch (e) {
+  $notification.post("调试", "$argument 不存在", String(e));
+}
 // 添加掩码函数
 function maskIpAddress(ip) {
   if (!maskIP || !ip) return ip;
