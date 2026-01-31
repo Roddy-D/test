@@ -1,8 +1,28 @@
 const IPPURE_URL = "https://my.ippure.com/v1/info";
 const IPV4_API = "http://ip-api.com/json?lang=zh-CN";
+const IPAPI_IS_URL = "https://api.ipapi.is/";
 
 // 从环境参数获取节点名
 const nodeName = $environment.params.node;
+const maskIP = $environment.params.MaskIP === "true" || $environment.params.MaskIP === true;
+
+// 添加掩码函数
+function maskIpAddress(ip) {
+  if (!maskIP || !ip) return ip;
+  // 处理 IPv4: 保留前两段，后两段用 *.*
+  const parts = String(ip).split(".");
+  if (parts.length === 4) {
+    return `${parts[0]}.${parts[1]}.*.*`;
+  }
+  // 处理 IPv6: 保留前4段，后面用 *
+  if (ip.includes(":")) {
+    const v6parts = ip.split(":");
+    if (v6parts.length >= 4) {
+      return `${v6parts.slice(0, 4).join(":")}:*`;
+    }
+  }
+  return ip;
+}
 
 function httpGet(url, headers = {}) {
   return new Promise((resolve, reject) => {
@@ -293,11 +313,23 @@ async function fetchIpinfoIo(ip) {
 
 (async () => {
   let ip = null;
+  let cachedIpapiResponse = null;
+
   try {
     const { data: ipv4Data } = await httpGet(IPV4_API);
     const ipv4Json = safeJsonParse(ipv4Data);
     ip = ipv4Json?.query || ipv4Json?.ip || String(ipv4Data || "").trim();
   } catch (_) { }
+
+  if (!ip) {
+    try {
+      const { data } = await httpGet(IPAPI_IS_URL);
+      cachedIpapiResponse = safeJsonParse(data);
+      if (cachedIpapiResponse && cachedIpapiResponse.ip) {
+        ip = cachedIpapiResponse.ip;
+      }
+    } catch (_) { }
+  }
 
   if (!ip) {
     $done({ title: "IP 纯净度", content: "获取 IPv4 失败", icon: "exclamationmark.triangle.fill" });
@@ -312,7 +344,7 @@ async function fetchIpinfoIo(ip) {
   } catch (_) { }
 
   const tasks = {
-    ipapi: fetchIpapi(ip),
+    ipapi: cachedIpapiResponse ? Promise.resolve(cachedIpapiResponse) : fetchIpapi(ip),
     ip2locIo: fetchIp2locationIo(ip),
     ipinfoIo: fetchIpinfoIo(ip),
     dbipHtml: fetchDbipHtml(ip),
@@ -409,7 +441,7 @@ async function fetchIpinfoIo(ip) {
 
   // 构建 HTML 输出
   let html = `<p style="text-align: center; font-family: -apple-system; font-size: large; font-weight: thin">`;
-  html += `<b><font color=#6959CD>IP</font> : </b><font color=>${ip}</font></br>`;
+  html += `<b><font color=#6959CD>IP</font> : </b><font color=>${maskIpAddress(ip)}</font></br>`;
   html += `<b><font color=#6959CD>ASN</font> : </b><font color=>${asnText}</font></br>`;
   html += `<b><font color=#6959CD>位置</font> : </b><font color=>${flag} ${country} ${city}</font></br>`;
   html += `<b><font color=#6959CD>类型</font> : </b><font color=>${hostingLine.replace("IP类型：", "")}</font></br>`;
