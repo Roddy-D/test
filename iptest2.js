@@ -6,6 +6,9 @@ const IPAPI_IS_URL = "https://api.ipapi.is/";
 const nodeName = $environment.params.node;
 const maskIP = typeof $argument === "string" && $argument.includes("true");
 
+// 调试
+$notification.post("调试信息", `$argument = ${$argument}`, `maskIP = ${maskIP}`);
+
 // 添加掩码函数
 function maskIpAddress(ip) {
   if (!maskIP || !ip) return ip;
