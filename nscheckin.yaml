@@ -1,0 +1,14 @@
+#!name=NodeSeek 签到增强版
+#!desc=NodeSeek 论坛每日自动签到，支持 TG 推送。开启抓取开关后访问个人主页即可获取 Cookie。
+#!author=Roddy-D
+#!date=2026-02-22
+
+# 模块参数：用户可在 UI 中统一修改
+#!arguments=CRON_TIME=1 0 * * *&ENABLE_CAPTURE=true&NS_COOKIE=&TG_BOT_TOKEN=&TG_USER_ID=&TG_NOTIFY_ONLY_FAIL=false&RANDOM_REWARD=false
+
+[Script]
+NS签到获取Cookie = type=http-request, pattern=^https:\/\/www\.nodeseek\.com\/api\/account\/getInfo\/\d+\?readme=1$, requires-body=false, script-path=https://raw.githubusercontent.com/Roddy-D/test/refs/heads/main/nscheckin.js, argument=ENABLE_CAPTURE=%ENABLE_CAPTURE%
+NS签到定时执行 = type=cron, cronexp="%CRON_TIME%", script-path=https://raw.githubusercontent.com/Roddy-D/test/refs/heads/main/nscheckin.js, argument=NS_COOKIE=%NS_COOKIE%&TG_BOT_TOKEN=%TG_BOT_TOKEN%&TG_USER_ID=%TG_USER_ID%&TG_NOTIFY_ONLY_FAIL=%TG_NOTIFY_ONLY_FAIL%&RANDOM_REWARD=%RANDOM_REWARD%
+
+[MITM]
+hostname = %APPEND% www.nodeseek.com
