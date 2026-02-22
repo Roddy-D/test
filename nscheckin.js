@@ -7,23 +7,10 @@ let enableCapture = true; // 默认开启抓取
 let useRandomReward = false; // 默认关闭随机鸡腿，走固定保底
 const COOKIE_CACHE_KEY = "NS_COOKIE"; // 持久化存储的Key
 
-// 精准解析 $argument (格式为 key=val&key=val)
+// 解析 $argument (支持传入 JSON 字符串)
 if (typeof $argument !== "undefined" && $argument) {
     try {
-        let arg = {};
-        const pairs = $argument.split("&");
-        for (let pair of pairs) {
-            const [k, v] = pair.split("=");
-            if (k && v !== undefined) {
-                try {
-                    arg[k] = decodeURIComponent(v);
-                } catch (e) {
-                    arg[k] = v;
-                }
-            } else if (k) {
-                arg[k] = ""; // 无值参数
-            }
-        }
+        let arg = typeof $argument === "string" ? JSON.parse($argument) : $argument;
 
         checkinCookie = arg.NS_COOKIE || "";
         tgToken = arg.TG_BOT_TOKEN || "";
@@ -39,7 +26,7 @@ if (typeof $argument !== "undefined" && $argument) {
             useRandomReward = (arg.RANDOM_REWARD === "true" || arg.RANDOM_REWARD === "1" || arg.RANDOM_REWARD === true);
         }
     } catch (e) {
-        console.log("[NS签到] 解析参数错误: " + e);
+        console.log("[NS签到] 解析参数错误: " + e + ", argument: " + $argument);
     }
 }
 // ===============================================
@@ -90,7 +77,6 @@ function handleCaptureCookie() {
         }
     }
 }
-
 
 /**
  * ============================================
