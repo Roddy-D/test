@@ -8,4 +8,4 @@
 IP-Pure = script-name=IPtest, title=IP 测试, content=刷新中…, style=info, update-interval=300
 
 [Script]
-IPtest = type=generic, timeout=10, argument={"markip":{{{MarkIP}}},"policy":"{{{Proxy}}}"}, script-path=https://raw.githubusercontent.com/Roddy-D/test/refs/heads/main/iptestmodule.js
+IPtest = type=generic, timeout=10, argument="{"markip":{{{MarkIP}}},"policy":"{{{Proxy}}}"}", script-path=https://raw.githubusercontent.com/Roddy-D/test/refs/heads/main/iptestmodule.js
