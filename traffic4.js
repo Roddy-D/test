@@ -430,6 +430,10 @@ function extractUrlAndOptions(urlStr, originalName, originalResetDay) {
     let finalName = String(originalName || "").trim();
     let finalResetDay = String(originalResetDay || "").trim();
 
+    if (finalUrl === "http://1.1.1.1" || finalUrl === "https://1.1.1.1") {
+        finalUrl = "";
+    }
+
     const match = finalUrl.match(/^(.*?)(?:\{([^}]+)\})?$/);
     if (match) {
         finalUrl = match[1].trim();
