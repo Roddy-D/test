@@ -10,4 +10,4 @@
 机场订阅=script-name=机场订阅,update-interval=3600
 
 [Script]
-机场订阅=type=generic,timeout=20,script-path=https://raw.githubusercontent.com/Roddy-D/test/main/traffic.js,script-update-interval=0,argument=url1={{{订阅链接1}}}&url2={{{订阅链接2}}}&url3={{{订阅链接3}}}&url4={{{订阅链接4}}}&url5={{{订阅链接5}}}&url6={{{订阅链接6}}}&url7={{{订阅链接7}}}&url8={{{订阅链接8}}}&url9={{{订阅链接9}}}&url10={{{订阅链接10}}}
+机场订阅=type=generic,timeout=20,script-path=https://raw.githubusercontent.com/Roddy-D/test/refs/heads/main/traffic.js,script-update-interval=0,argument="{"url1":"{{{订阅链接1}}}","url2":"{{{订阅链接2}}}","url3":"{{{订阅链接3}}}","url4":"{{{订阅链接4}}}","url5":"{{{订阅链接5}}}","url6":"{{{订阅链接6}}}","url7":"{{{订阅链接7}}}","url8":"{{{订阅链接8}}}","url9":"{{{订阅链接9}}}","url10":"{{{订阅链接10}}}"}"
