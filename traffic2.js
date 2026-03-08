@@ -81,11 +81,16 @@ function parseArguments(argument) {
 
     if (!argument) return fallback;
 
-    const payloadIndex = argument.indexOf("payload=");
-    if (payloadIndex !== -1) {
-        const metaPart = payloadIndex > 0 ? argument.slice(0, payloadIndex - 1) : "";
+    let argStr = String(argument).trim();
+    if (argStr.startsWith('"') && argStr.endsWith('"')) {
+        argStr = argStr.slice(1, -1).trim();
+    }
+
+    const payloadIndex = argStr.indexOf("payload=");
+    if (payloadIndex !== -1 && !argStr.startsWith("{")) {
+        const metaPart = payloadIndex > 0 ? argStr.slice(0, payloadIndex - 1) : "";
         const metaParams = parseKeyValueArgument(metaPart);
-        const payload = argument.slice(payloadIndex + "payload=".length);
+        const payload = argStr.slice(payloadIndex + "payload=".length);
         const slots = parseSlotPayload(payload);
         normalizeShiftedSlots(slots);
         return {
@@ -97,7 +102,17 @@ function parseArguments(argument) {
         };
     }
 
-    const params = parseKeyValueArgument(argument);
+    let params = {};
+    if (argStr.startsWith("{") && argStr.endsWith("}")) {
+        try {
+            params = JSON.parse(argStr);
+        } catch (e) {
+            params = parseKeyValueArgument(argStr);
+        }
+    } else {
+        params = parseKeyValueArgument(argStr);
+    }
+
     const slots = [];
 
     if (params.url) {
