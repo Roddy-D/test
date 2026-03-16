@@ -6,7 +6,7 @@ let notifyOnlyFail = false;
 let enableCapture = true; // 默认开启抓取
 let useRandomReward = false; // 默认关闭随机鸡腿，走固定保底
 const COOKIE_CACHE_KEY = "NS_COOKIE"; // 持久化存储的Key
-console.log("[NS签到] 原始 $argument: " + $argument);
+$notification.post("NS签到调试", "原始argument", String(typeof $argument !== "undefined" ? $argument : "undefined"));
 // 解析 $argument (支持传入 JSON 字符串)
 if (typeof $argument !== "undefined" && $argument) {
     try {
