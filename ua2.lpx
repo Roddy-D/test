@@ -1,0 +1,7 @@
+[Script]
+http-request ^https?:\/\/([a-z0-9-]+\.)?kelee\.one script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/script/uachange.js, requires-body=false, tag=kelee-ua
+http-response ^https?:\/\/([a-z0-9-]+\.)?kelee\.one\/.*\.(lsr|lpx|ltx|lcf) script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/script/uachange.js, requires-body=false, tag=kelee-res-preview
+http-request ^https?:\/\/([a-z0-9-]+\.)?ddgksf2013\.top script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/script/uachange.js, requires-body=false, tag=ddgksf-ua
+
+[MITM]
+hostname = kelee.one, *.kelee.one, ddgksf2013.top, *.ddgksf2013.top

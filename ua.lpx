@@ -1,7 +1,0 @@
-[Script]
-http-request ^https?:\/\/([a-z0-9-]+\.)?kelee\.one script-path=ua-override.js, requires-body=false, tag=kelee-ua
-http-response ^https?:\/\/([a-z0-9-]+\.)?kelee\.one\/.*\.(lsr|lpx|ltx|lcf) script-path=kelee-preview.js, requires-body=false, tag=kelee-res-preview
-http-request ^https?:\/\/([a-z0-9-]+\.)?ddgksf2013\.top script-path=ua-override.js, requires-body=false, tag=ddgksf-ua
-
-[MITM]
-hostname = kelee.one, *.kelee.one, ddgksf2013.top, *.ddgksf2013.top
